@@ -21,7 +21,7 @@ https://gemini.google.com/share/6324a015019d
 ## 카테고리: 게임
 
 ### 배포 링크
-https://gemini.google.com/share/ea055a5e1769
+https://gemini.google.com/share/f8617049b358
 
 ### 이 앱을 만든 이유
 - 라이어 게임은 최소 3명이 모여야 할 수 있는 게임입니다.
