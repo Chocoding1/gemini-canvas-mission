@@ -66,7 +66,7 @@
     <header
       class="bg-white border-b px-6 py-4 flex justify-between items-center relative z-10"
     >
-      <h1 class="text-xl font-extrabold text-blue-600">🎭 AI LIAR GAME PRO</h1>
+      <h1 class="text-xl font-extrabold text-blue-600">🎭 AI LIAR GAME</h1>
       <div class="flex items-center gap-4">
         <div
           id="topKeywordDisplay"
@@ -98,7 +98,7 @@
         class="flex-1 flex flex-col items-center justify-center text-center space-y-6"
       >
         <div class="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full">
-          <h2 class="text-2xl font-bold mb-4">고성능 AI 라이어 게임</h2>
+          <h2 class="text-2xl font-bold mb-4">AI 라이어 게임</h2>
           <div class="mb-6">
             <label class="block text-sm font-bold text-gray-500 mb-2"
               >참여 인원 설정</label
@@ -450,6 +450,18 @@
         setTimeout(aiTurn, 1000);
       }
 
+      // 스크롤을 최하단으로 내리는 함수
+      function scrollToBottom() {
+        const gameContainer = document.getElementById("gameContainer");
+        // 브라우저 렌더링 후 실행되도록 requestAnimationFrame 사용
+        requestAnimationFrame(() => {
+          gameContainer.scrollTo({
+            top: gameContainer.scrollHeight,
+            behavior: "smooth",
+          });
+        });
+      }
+
       function addChat(sender, text, isUser = false) {
         const log = document.getElementById("chatLog");
         const container = document.createElement("div");
@@ -463,8 +475,9 @@
         container.appendChild(name);
         container.appendChild(bubble);
         log.appendChild(container);
-        log.scrollTop = log.scrollHeight;
+
         gameState.history.push(`${sender}: ${text}`);
+        scrollToBottom();
       }
 
       function addSystemMsg(text) {
@@ -473,6 +486,7 @@
         msg.className = "system-msg font-medium italic";
         msg.innerText = `— ${text} —`;
         log.appendChild(msg);
+        scrollToBottom();
       }
 
       async function aiTurn() {
@@ -497,7 +511,6 @@
                 3. "그것은 우리 주변에 흔하다", "사람들이 자주 접한다", "매우 유용하거나 즐거움을 준다"와 같이 어느 것에도 해당할 법한 말을 하세요.
                 4. 절대 구체적인 명사나 특징을 언급하지 마세요. 한 문장으로 교묘하게 말하세요.`;
         } else {
-          // 시민 AI 프롬프트 강화: 팩트 체크 및 특징 구체화 요구
           systemPrompt = `당신은 날카롭고 똑똑한 시민입니다. 제시어는 '${gameState.word}'입니다. 
                 [중요 지침]
                 1. 당신은 '${gameState.word}'이 무엇인지 정확하게 알고 있습니다. 다른 대상(예: 판다와 토끼를 헷갈리는 것)과 절대 혼동하지 마세요.
@@ -595,6 +608,7 @@
                     <div class="grid grid-cols-2 gap-2 w-full">${voteButtons}</div>
                 </div>
             `;
+        scrollToBottom();
       }
 
       function processFinalResult(userVoteId, aiVotes, aiReasons) {
