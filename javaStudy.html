@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Java 기초 마스터 퀴즈</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap");
+
+      body {
+        font-family: "Noto Sans KR", sans-serif;
+        background-color: #f3f4f6;
+      }
+
+      .option-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: 2px solid transparent;
+      }
+
+      .option-card:hover {
+        background-color: #f0f7ff;
+        border-color: #3b82f6;
+      }
+
+      .option-card.selected {
+        background-color: #eff6ff;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+      }
+
+      .result-correct {
+        background-color: #dcfce7;
+        border: 1px solid #22c55e;
+        color: #166534;
+      }
+
+      .result-wrong {
+        background-color: #fee2e2;
+        border: 1px solid #ef4444;
+        color: #991b1b;
+      }
+
+      .fade-in {
+        animation: fadeIn 0.5s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen flex items-center justify-center p-4">
+    <div
+      class="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden"
+    >
+      <!-- Header -->
+      <div class="bg-blue-600 p-6 text-white text-center">
+        <h1 class="text-2xl font-bold">☕ Java 기초 마스터 퀴즈</h1>
+        <p class="text-blue-100 mt-2">틀린 설명을 하나 골라보세요!</p>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="w-full bg-gray-200 h-2">
+        <div
+          id="progress-bar"
+          class="bg-blue-400 h-2 transition-all duration-500"
+          style="width: 0%"
+        ></div>
+      </div>
+
+      <div class="p-8">
+        <!-- Question Section -->
+        <div id="quiz-container">
+          <div class="mb-6">
+            <span
+              id="question-number"
+              class="text-sm font-semibold text-blue-600 uppercase tracking-wide"
+              >질문 1</span
+            >
+            <h2
+              id="question-text"
+              class="text-xl font-bold text-gray-800 mt-1 leading-relaxed"
+            >
+              자바의 기본 특징에 대한 설명 중 틀린 것은 무엇입니까?
+            </h2>
+          </div>
+
+          <!-- Options -->
+          <div id="options-list" class="space-y-3">
+            <!-- Options will be generated here -->
+          </div>
+
+          <!-- Action Button -->
+          <div class="mt-8">
+            <button
+              id="submit-btn"
+              disabled
+              class="w-full bg-gray-300 text-gray-500 font-bold py-4 rounded-xl transition-all duration-300 disabled:cursor-not-allowed hover:bg-blue-700 hover:text-white"
+            >
+              정답 결정하기
+            </button>
+          </div>
+        </div>
+
+        <!-- Feedback Section (Hidden by default) -->
+        <div id="feedback-container" class="mt-6 hidden fade-in">
+          <div id="result-message" class="p-4 rounded-lg font-bold mb-4">
+            <!-- Result text here -->
+          </div>
+          <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+            <h4 class="font-bold text-gray-700 mb-2">💡 해설</h4>
+            <p
+              id="explanation-text"
+              class="text-gray-600 leading-relaxed text-sm md:text-base"
+            >
+              <!-- Explanation here -->
+            </p>
+          </div>
+          <button
+            id="next-btn"
+            class="mt-6 w-full bg-gray-800 text-white font-bold py-4 rounded-xl hover:bg-black transition-colors"
+          >
+            다음 문제 풀기
+          </button>
+        </div>
+      </div>
+
+      <!-- Score Footer -->
+      <div
+        class="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500"
+      >
+        <span
+          >진행률: <span id="current-count">0</span> /
+          <span id="total-count">0</span></span
+        >
+        <span>정답 수: <span id="score">0</span></span>
+      </div>
+    </div>
+
+    <script>
+      // 퀴즈 데이터셋
+      const quizData = [
+        {
+          question: "자바의 데이터 타입과 변수에 대한 설명 중 틀린 것은?",
+          options: [
+            "int 타입은 정수를 저장하며 크기는 4바이트이다.",
+            "boolean 타입은 true와 false 두 가지 값만 가질 수 있다.",
+            "String은 기본 데이터 타입(Primitive Type)에 속한다.",
+            "double은 실수를 저장하는 데이터 타입이다.",
+            "변수명은 숫자로 시작할 수 없다.",
+          ],
+          correct: 2, // "String은 기본 데이터 타입에 속한다"가 틀린 설명 (참조 타입임)
+          explanation:
+            "String은 기본 데이터 타입이 아니라 참조 데이터 타입(Reference Type)입니다. 자바의 기본 타입은 byte, short, int, long, float, double, char, boolean 총 8개뿐입니다. String은 클래스로 정의되어 있으며 문자열 데이터를 다루기 위해 사용됩니다.",
+        },
+        {
+          question: "자바의 객체 지향 프로그래밍(OOP) 특징 중 틀린 설명은?",
+          options: [
+            "상속을 통해 기존 클래스의 기능을 재사용할 수 있다.",
+            "다형성을 통해 하나의 객체가 여러 가지 타입을 가질 수 있다.",
+            "캡슐화는 데이터 보호와 정보 은닉을 위해 사용된다.",
+            "자바는 다중 상속(Multiple Inheritance)을 클래스 단위에서 지원한다.",
+            "추상화를 통해 공통적인 특징을 추출하여 클래스를 설계할 수 있다.",
+          ],
+          correct: 3,
+          explanation:
+            "자바는 클래스 간의 다중 상속을 지원하지 않습니다. 이는 '다이아몬드 문제'와 같은 복잡성을 피하기 위한 설계입니다. 대신 인터페이스(Interface)를 통해 여러 기능을 구현(implements)함으로써 다중 상속과 유사한 효과를 낼 수 있습니다.",
+        },
+        {
+          question: "자바의 제어문과 반복문에 대한 설명 중 틀린 것은?",
+          options: [
+            "if문은 조건식이 true일 때 실행된다.",
+            "switch문에서는 break문이 없어도 다음 case로 넘어가지 않는다.",
+            "for문은 반복 횟수가 정해져 있을 때 주로 사용한다.",
+            "while문은 조건식이 false가 될 때까지 무한 반복될 수 있다.",
+            "continue문은 현재 반복 루프의 남은 부분을 건너뛰고 다음 반복으로 넘어간다.",
+          ],
+          correct: 1,
+          explanation:
+            "switch문에서 case 실행 후 break문이 없으면 'Fall-through' 현상이 발생하여 다음 case의 코드까지 연속적으로 실행됩니다. 따라서 의도적인 경우가 아니라면 각 case 끝에 반드시 break를 작성해야 합니다.",
+        },
+        {
+          question:
+            "JVM(Java Virtual Machine)과 프로그램 실행에 관한 설명 중 틀린 것은?",
+          options: [
+            "JVM은 자바 바이트코드를 실행하는 가상 머신이다.",
+            "자바는 한 번 작성하면 어디서든 실행된다(Write Once, Run Anywhere)는 특징이 있다.",
+            "Garbage Collector는 사용하지 않는 메모리를 자동으로 해제한다.",
+            "main 메서드는 프로그램 실행의 시작점이다.",
+            "JDK 없이 JRE만 있어도 자바 소스 코드를 컴파일할 수 있다.",
+          ],
+          correct: 4,
+          explanation:
+            "JRE(Java Runtime Environment)는 자바 프로그램을 '실행'하기 위한 환경이며, 컴파일러(javac)는 포함되어 있지 않습니다. 자바 소스 코드를 컴파일하려면 개발 도구인 JDK(Java Development Kit)가 반드시 필요합니다.",
+        },
+        {
+          question: "자바의 예외 처리(Exception Handling) 중 틀린 설명은?",
+          options: [
+            "try 블록 안에는 예외가 발생할 가능성이 있는 코드를 작성한다.",
+            "catch 블록은 발생한 예외를 처리하는 역할을 한다.",
+            "finally 블록은 예외 발생 여부와 상관없이 항상 실행된다.",
+            "throw 키워드는 예외를 강제로 발생시킬 때 사용한다.",
+            "Checked Exception은 컴파일 시점에 체크되지 않아 처리가 강제되지 않는다.",
+          ],
+          correct: 4,
+          explanation:
+            "Checked Exception은 컴파일 시점에 체크되는 예외로, 반드시 try-catch로 처리하거나 throws로 선언해야 합니다. 처리가 강제되지 않는 예외는 RuntimeException을 상속받은 Unchecked Exception입니다.",
+        },
+      ];
+
+      let currentQuizIndex = 0;
+      let selectedOptionIndex = null;
+      let score = 0;
+      let isAnswered = false;
+
+      const quizContainer = document.getElementById("quiz-container");
+      const feedbackContainer = document.getElementById("feedback-container");
+      const questionNumber = document.getElementById("question-number");
+      const questionText = document.getElementById("question-text");
+      const optionsList = document.getElementById("options-list");
+      const submitBtn = document.getElementById("submit-btn");
+      const nextBtn = document.getElementById("next-btn");
+      const resultMessage = document.getElementById("result-message");
+      const explanationText = document.getElementById("explanation-text");
+      const progressBar = document.getElementById("progress-bar");
+      const currentCountDisplay = document.getElementById("current-count");
+      const totalCountDisplay = document.getElementById("total-count");
+      const scoreDisplay = document.getElementById("score");
+
+      // 초기화
+      function initQuiz() {
+        totalCountDisplay.innerText = quizData.length;
+        loadQuiz();
+      }
+
+      function loadQuiz() {
+        const currentQuiz = quizData[currentQuizIndex];
+
+        // 상태 초기화
+        selectedOptionIndex = null;
+        isAnswered = false;
+        submitBtn.disabled = true;
+        submitBtn.innerText = "정답 결정하기";
+        submitBtn.classList.replace("bg-blue-600", "bg-gray-300");
+        submitBtn.classList.replace("text-white", "text-gray-500");
+        feedbackContainer.classList.add("hidden");
+        quizContainer.classList.remove("hidden");
+
+        // 텍스트 업데이트
+        questionNumber.innerText = `질문 ${currentQuizIndex + 1}`;
+        questionText.innerText = currentQuiz.question;
+        currentCountDisplay.innerText = currentQuizIndex + 1;
+
+        // 진행바 업데이트
+        const progress = (currentQuizIndex / quizData.length) * 100;
+        progressBar.style.width = `${progress}%`;
+
+        // 보기 생성
+        optionsList.innerHTML = "";
+        currentQuiz.options.forEach((option, index) => {
+          const div = document.createElement("div");
+          div.className =
+            "option-card p-4 rounded-xl border-2 text-gray-700 font-medium flex items-start gap-3";
+          div.innerHTML = `
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-bold border">${index + 1}</span>
+                    <span class="flex-1">${option}</span>
+                `;
+          div.onclick = () => selectOption(index, div);
+          optionsList.appendChild(div);
+        });
+      }
+
+      function selectOption(index, element) {
+        if (isAnswered) return;
+
+        selectedOptionIndex = index;
+
+        // UI 업데이트
+        const allOptions = document.querySelectorAll(".option-card");
+        allOptions.forEach((opt) => opt.classList.remove("selected"));
+        element.classList.add("selected");
+
+        // 버튼 활성화
+        submitBtn.disabled = false;
+        submitBtn.classList.replace("bg-gray-300", "bg-blue-600");
+        submitBtn.classList.replace("text-gray-500", "text-white");
+      }
+
+      function submitAnswer() {
+        if (selectedOptionIndex === null || isAnswered) return;
+
+        isAnswered = true;
+        const currentQuiz = quizData[currentQuizIndex];
+        const isCorrect = selectedOptionIndex === currentQuiz.correct;
+
+        if (isCorrect) {
+          score++;
+          scoreDisplay.innerText = score;
+          resultMessage.innerText =
+            "✨ 정답입니다! 틀린 설명을 정확히 찾으셨네요.";
+          resultMessage.className =
+            "p-4 rounded-lg font-bold mb-4 result-correct";
+        } else {
+          resultMessage.innerText =
+            "❌ 아쉽습니다! 선택하신 문장은 맞는 설명입니다.";
+          resultMessage.className =
+            "p-4 rounded-lg font-bold mb-4 result-wrong";
+        }
+
+        // 정답 하이라이트
+        const allOptions = document.querySelectorAll(".option-card");
+        allOptions[currentQuiz.correct].style.borderColor = "#22c55e";
+        allOptions[currentQuiz.correct].style.backgroundColor = "#f0fdf4";
+
+        if (!isCorrect) {
+          allOptions[selectedOptionIndex].style.borderColor = "#ef4444";
+          allOptions[selectedOptionIndex].style.backgroundColor = "#fef2f2";
+        }
+
+        // 해설 표시
+        explanationText.innerText = currentQuiz.explanation;
+        feedbackContainer.classList.remove("hidden");
+        submitBtn.disabled = true;
+        submitBtn.innerText = "해설 확인 중...";
+
+        // 마지막 문제인 경우 버튼 텍스트 변경
+        if (currentQuizIndex === quizData.length - 1) {
+          nextBtn.innerText = "결과 확인 및 다시 시작";
+        }
+      }
+
+      function nextQuiz() {
+        currentQuizIndex++;
+        if (currentQuizIndex < quizData.length) {
+          loadQuiz();
+        } else {
+          // 종료 및 리셋
+          alert(
+            `축하합니다! 모든 문제를 풀었습니다.\n최종 점수: ${score} / ${quizData.length}`,
+          );
+          currentQuizIndex = 0;
+          score = 0;
+          scoreDisplay.innerText = "0";
+          loadQuiz();
+        }
+      }
+
+      submitBtn.addEventListener("click", submitAnswer);
+      nextBtn.addEventListener("click", nextQuiz);
+
+      // 시작
+      initQuiz();
+    </script>
+  </body>
+</html>
