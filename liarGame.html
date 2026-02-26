@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 라이어 게임</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;800&display=swap");
+      body {
+        font-family: "Pretendard", sans-serif;
+        background-color: #f3f4f6;
+      }
+      .chat-bubble {
+        max-width: 80%;
+        border-radius: 1.5rem;
+        padding: 0.75rem 1.25rem;
+        margin-bottom: 0.5rem;
+      }
+      .ai-bubble {
+        background-color: white;
+        color: #1f2937;
+        border: 1px solid #e5e7eb;
+        align-self: flex-start;
+      }
+      .user-bubble {
+        background-color: #3b82f6;
+        color: white;
+        align-self: flex-end;
+      }
+      .system-msg {
+        text-align: center;
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin: 1rem 0;
+      }
+      .waiting-msg {
+        text-align: center;
+        color: #9ca3af;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        width: 100%;
+        padding: 1rem;
+      }
+
+      @keyframes fadeInRight {
+        from {
+          opacity: 0;
+          transform: translateX(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      .keyword-badge {
+        animation: fadeInRight 0.5s ease-out;
+      }
+
+      .timer-progress {
+        transition: width 1s linear;
+      }
+    </style>
+  </head>
+  <body class="h-screen flex flex-col">
+    <header
+      class="bg-white border-b px-6 py-4 flex justify-between items-center relative z-10"
+    >
+      <h1 class="text-xl font-extrabold text-blue-600">🎭 AI LIAR GAME PRO</h1>
+      <div class="flex items-center gap-4">
+        <div
+          id="topKeywordDisplay"
+          class="hidden keyword-badge bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full flex items-center gap-2"
+        >
+          <span class="text-xs font-bold text-blue-400 uppercase tracking-wider"
+            >제시어</span
+          >
+          <span
+            id="topKeywordText"
+            class="text-sm font-extrabold text-blue-700"
+          ></span>
+        </div>
+        <button
+          id="resetBtn"
+          class="text-sm font-semibold text-gray-500 hover:text-red-500 transition"
+        >
+          초기화
+        </button>
+      </div>
+    </header>
+
+    <main
+      id="gameContainer"
+      class="flex-1 overflow-y-auto p-4 flex flex-col gap-2 relative"
+    >
+      <div
+        id="setupScreen"
+        class="flex-1 flex flex-col items-center justify-center text-center space-y-6"
+      >
+        <div class="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full">
+          <h2 class="text-2xl font-bold mb-4">고성능 AI 라이어 게임</h2>
+          <div class="mb-6">
+            <label class="block text-sm font-bold text-gray-500 mb-2"
+              >참여 인원 설정</label
+            >
+            <div class="flex items-center justify-center gap-4">
+              <button
+                onclick="changePlayerCount(-1)"
+                class="w-10 h-10 rounded-full border-2 border-gray-200 flex items-center justify-center hover:bg-gray-50"
+              >
+                -
+              </button>
+              <span
+                id="playerCountDisplay"
+                class="text-2xl font-black text-blue-600"
+                >4</span
+              >
+              <button
+                onclick="changePlayerCount(1)"
+                class="w-10 h-10 rounded-full border-2 border-gray-200 flex items-center justify-center hover:bg-gray-50"
+              >
+                +
+              </button>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-2">
+              * AI가 훨씬 날카롭게 당신을 감시합니다.
+            </p>
+          </div>
+          <div class="space-y-3">
+            <button
+              id="startGameBtn"
+              onclick="prepareGame()"
+              class="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold hover:opacity-90 transition shadow-lg text-lg"
+            >
+              🎮 게임 시작
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="chatLog" class="hidden flex flex-col space-y-2"></div>
+    </main>
+
+    <div
+      id="wordOverlay"
+      class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-6 z-50"
+    >
+      <div
+        class="bg-white p-8 rounded-3xl text-center max-w-xs w-full shadow-2xl"
+      >
+        <h4 class="text-xl font-bold mb-1">당신의 역할</h4>
+        <p id="overlayHeader" class="text-sm text-gray-500 mb-4"></p>
+        <div class="py-6 border-y border-gray-100 mb-6">
+          <h3 id="secretWordDisplay" class="text-4xl font-black text-blue-600">
+            ???
+          </h3>
+          <p id="liarSubText" class="text-sm text-gray-400 mt-3 hidden">
+            (침묵하면 더 빨리 들킵니다! 교묘하게 속이세요.)
+          </p>
+        </div>
+        <button
+          onclick="closeOverlayAndStart()"
+          class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 transition"
+        >
+          게임 입장하기
+        </button>
+      </div>
+    </div>
+
+    <footer id="footerArea" class="hidden bg-white border-t p-4 pb-8">
+      <div id="timerContainer" class="hidden max-w-4xl mx-auto mb-2 px-1">
+        <div class="flex justify-between items-center mb-1">
+          <span class="text-xs font-bold text-red-500">발언 제한 시간</span>
+          <span id="timerText" class="text-xs font-black text-red-500"
+            >30s</span
+          >
+        </div>
+        <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+          <div
+            id="timerBar"
+            class="timer-progress bg-red-500 h-full w-full"
+          ></div>
+        </div>
+      </div>
+
+      <div
+        id="waitingArea"
+        class="max-w-4xl mx-auto flex items-center justify-center"
+      >
+        <p class="waiting-msg">⏳ 다른 플레이어의 분석을 기다리는 중...</p>
+      </div>
+      <div id="inputArea" class="hidden max-w-4xl mx-auto flex gap-2">
+        <input
+          id="userInput"
+          type="text"
+          placeholder="제시어에 대한 설명을 입력하세요..."
+          class="flex-1 border rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          id="sendBtn"
+          class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold"
+        >
+          전송
+        </button>
+      </div>
+    </footer>
+
+    <div
+      id="resultModal"
+      class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-6 z-50 overflow-y-auto"
+    >
+      <div
+        id="resultContent"
+        class="bg-white p-6 my-8 rounded-3xl text-center max-w-md mx-auto shadow-2xl relative"
+      ></div>
+    </div>
+
+    <script>
+      const apiKey = "";
+
+      const categories = {
+        음식: [
+          "떡볶이",
+          "삼겹살",
+          "마카롱",
+          "비빔밥",
+          "햄버거",
+          "초밥",
+          "김치찌개",
+          "치킨",
+          "라면",
+          "피자",
+        ],
+        동물: [
+          "펭귄",
+          "코끼리",
+          "기린",
+          "판다",
+          "강아지",
+          "사자",
+          "카멜레온",
+          "토끼",
+          "독수리",
+          "고래",
+        ],
+        사물: [
+          "에어컨",
+          "칫솔",
+          "스마트폰",
+          "지하철",
+          "텔레비전",
+          "안경",
+          "시계",
+          "노트북",
+          "냉장고",
+        ],
+      };
+
+      const aiNames = [
+        "지수",
+        "민준",
+        "수아",
+        "도윤",
+        "하윤",
+        "서준",
+        "유진",
+        "은우",
+      ];
+
+      let playerCount = 4;
+      let gameState = {
+        mode: "",
+        word: "",
+        category: "",
+        liarId: "",
+        turn: 0,
+        players: [],
+        history: [],
+        timer: null,
+        timeLeft: 30,
+      };
+
+      function changePlayerCount(delta) {
+        playerCount = Math.max(3, Math.min(8, playerCount + delta));
+        document.getElementById("playerCountDisplay").innerText = playerCount;
+      }
+
+      async function geminiCall(prompt, system, isJson = false) {
+        let retries = 5;
+        let delay = 1000;
+
+        while (retries > 0) {
+          try {
+            const payload = {
+              contents: [{ parts: [{ text: prompt }] }],
+              systemInstruction: { parts: [{ text: system }] },
+            };
+            if (isJson) {
+              payload.generationConfig = {
+                responseMimeType: "application/json",
+              };
+            }
+            const response = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              },
+            );
+            const result = await response.json();
+            const text =
+              result.candidates?.[0]?.content?.parts?.[0]?.text || "...";
+            return isJson ? JSON.parse(text) : text;
+          } catch (e) {
+            retries--;
+            if (retries === 0) {
+              console.error("Gemini API Error after retries:", e);
+              return isJson
+                ? { targetId: "unknown", reason: "API 연결 실패" }
+                : "...";
+            }
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            delay *= 2;
+          }
+        }
+      }
+
+      function prepareGame() {
+        const categoryKeys = Object.keys(categories);
+        gameState.category =
+          categoryKeys[Math.floor(Math.random() * categoryKeys.length)];
+        gameState.word =
+          categories[gameState.category][
+            Math.floor(Math.random() * categories[gameState.category].length)
+          ];
+        gameState.history = [];
+        gameState.turn = 0;
+
+        gameState.players = [];
+        const shuffledNames = [...aiNames].sort(() => Math.random() - 0.5);
+        for (let i = 0; i < playerCount - 1; i++) {
+          gameState.players.push({
+            id: `ai${i}`,
+            name: `${shuffledNames[i]}(AI)`,
+            isLiar: false,
+          });
+        }
+        gameState.players.push({ id: "user", name: "나", isLiar: false });
+        gameState.players = gameState.players.sort(() => Math.random() - 0.5);
+
+        const actualLiarIdx = Math.floor(
+          Math.random() * gameState.players.length,
+        );
+        gameState.players[actualLiarIdx].isLiar = true;
+        gameState.liarId = gameState.players[actualLiarIdx].id;
+        gameState.mode = gameState.liarId === "user" ? "liar" : "detective";
+
+        showOverlay();
+      }
+
+      function showOverlay() {
+        const header = document.getElementById("overlayHeader");
+        const display = document.getElementById("secretWordDisplay");
+        const liarSubText = document.getElementById("liarSubText");
+
+        liarSubText.classList.add("hidden");
+        if (gameState.mode === "liar") {
+          header.innerText = "당신은 현재...";
+          display.innerText = "👿 라이어";
+          display.style.color = "#ef4444";
+          liarSubText.classList.remove("hidden");
+        } else {
+          header.innerText = "당신은 시민입니다. 제시어는...";
+          display.innerText = gameState.word;
+          display.style.color = "#2563eb";
+          document.getElementById("topKeywordText").innerText = gameState.word;
+        }
+        document.getElementById("wordOverlay").classList.remove("hidden");
+      }
+
+      function closeOverlayAndStart() {
+        document.getElementById("wordOverlay").classList.add("hidden");
+        document.getElementById("setupScreen").classList.add("hidden");
+        document.getElementById("chatLog").innerHTML = "";
+        document.getElementById("chatLog").classList.remove("hidden");
+        document.getElementById("footerArea").classList.remove("hidden");
+        if (gameState.mode !== "liar")
+          document
+            .getElementById("topKeywordDisplay")
+            .classList.remove("hidden");
+
+        addSystemMsg(`게임을 시작합니다! 카테고리: [${gameState.category}]`);
+        aiTurn();
+      }
+
+      function updateInputVisibility(isUserTurn) {
+        const waitingArea = document.getElementById("waitingArea");
+        const inputArea = document.getElementById("inputArea");
+        const timerContainer = document.getElementById("timerContainer");
+
+        if (isUserTurn) {
+          waitingArea.classList.add("hidden");
+          inputArea.classList.remove("hidden");
+          timerContainer.classList.remove("hidden");
+          startUserTimer();
+          document.getElementById("userInput").focus();
+        } else {
+          waitingArea.classList.remove("hidden");
+          inputArea.classList.add("hidden");
+          timerContainer.classList.add("hidden");
+          stopUserTimer();
+        }
+      }
+
+      function startUserTimer() {
+        gameState.timeLeft = 30;
+        updateTimerUI();
+        gameState.timer = setInterval(() => {
+          gameState.timeLeft--;
+          updateTimerUI();
+          if (gameState.timeLeft <= 0) {
+            stopUserTimer();
+            handleTimeOut();
+          }
+        }, 1000);
+      }
+
+      function stopUserTimer() {
+        if (gameState.timer) {
+          clearInterval(gameState.timer);
+          gameState.timer = null;
+        }
+      }
+
+      function updateTimerUI() {
+        const timerText = document.getElementById("timerText");
+        const timerBar = document.getElementById("timerBar");
+        timerText.innerText = `${gameState.timeLeft}s`;
+        const percentage = (gameState.timeLeft / 30) * 100;
+        timerBar.style.width = `${percentage}%`;
+      }
+
+      function handleTimeOut() {
+        const input = document.getElementById("userInput");
+        const value = input.value.trim() || "... (시간 초과로 인한 침묵)";
+        addChat("나", value, true);
+        input.value = "";
+        gameState.turn++;
+        updateInputVisibility(false);
+        setTimeout(aiTurn, 1000);
+      }
+
+      function addChat(sender, text, isUser = false) {
+        const log = document.getElementById("chatLog");
+        const container = document.createElement("div");
+        container.className = `flex flex-col ${isUser ? "items-end" : "items-start"}`;
+        const name = document.createElement("span");
+        name.className = "text-xs text-gray-500 mb-1 px-2";
+        name.innerText = sender;
+        const bubble = document.createElement("div");
+        bubble.className = `chat-bubble ${isUser ? "user-bubble" : "ai-bubble shadow-sm"}`;
+        bubble.innerText = text;
+        container.appendChild(name);
+        container.appendChild(bubble);
+        log.appendChild(container);
+        log.scrollTop = log.scrollHeight;
+        gameState.history.push(`${sender}: ${text}`);
+      }
+
+      function addSystemMsg(text) {
+        const log = document.getElementById("chatLog");
+        const msg = document.createElement("div");
+        msg.className = "system-msg font-medium italic";
+        msg.innerText = `— ${text} —`;
+        log.appendChild(msg);
+      }
+
+      async function aiTurn() {
+        if (gameState.turn >= gameState.players.length) {
+          startVoting();
+          return;
+        }
+        const currentPlayer = gameState.players[gameState.turn];
+        if (currentPlayer.id === "user") {
+          updateInputVisibility(true);
+          addSystemMsg("당신의 발언 차례입니다.");
+          return;
+        }
+        updateInputVisibility(false);
+
+        let systemPrompt = "";
+        if (currentPlayer.isLiar) {
+          systemPrompt = `당신은 지능적이지만 정답을 모르는 라이어입니다. 카테고리는 '${gameState.category}'입니다. 
+                [중요 지침]
+                1. 당신은 정답을 모르므로 시민들의 발언을 통해 정답을 유추해야 합니다.
+                2. 하지만 너무 정답을 맞히려고 애쓰기보다는, '모호하고 포괄적인' 표현을 사용하여 정체가 들통나지 않는 데 집중하세요.
+                3. "그것은 우리 주변에 흔하다", "사람들이 자주 접한다", "매우 유용하거나 즐거움을 준다"와 같이 어느 것에도 해당할 법한 말을 하세요.
+                4. 절대 구체적인 명사나 특징을 언급하지 마세요. 한 문장으로 교묘하게 말하세요.`;
+        } else {
+          // 시민 AI 프롬프트 강화: 팩트 체크 및 특징 구체화 요구
+          systemPrompt = `당신은 날카롭고 똑똑한 시민입니다. 제시어는 '${gameState.word}'입니다. 
+                [중요 지침]
+                1. 당신은 '${gameState.word}'이 무엇인지 정확하게 알고 있습니다. 다른 대상(예: 판다와 토끼를 헷갈리는 것)과 절대 혼동하지 마세요.
+                2. '${gameState.word}'의 가장 독특한 특징 하나(외형, 서식지, 용도 등)를 떠올려 한 문장으로 설명하세요.
+                3. 라이어에게 정답을 직접 노출하지 않으면서, 진짜 시민들끼리는 "아, 그거 맞네"라고 확신할 수 있는 암호 같은 특징을 말하세요.
+                4. 절대 거짓말을 하거나 엉뚱한 설명을 하지 마세요. 정확한 사실에 기반하세요.`;
+        }
+
+        const context = gameState.history.join("\n");
+        const response = await geminiCall(
+          `현재까지의 대화:\n${context}\n당신의 발언:`,
+          systemPrompt,
+        );
+        addChat(currentPlayer.name, response);
+        gameState.turn++;
+        setTimeout(aiTurn, 1500);
+      }
+
+      document.getElementById("sendBtn").onclick = () => {
+        const input = document.getElementById("userInput");
+        if (!input.value.trim()) return;
+        stopUserTimer();
+        addChat("나", input.value, true);
+        input.value = "";
+        gameState.turn++;
+        updateInputVisibility(false);
+        setTimeout(aiTurn, 1000);
+      };
+
+      async function startVoting() {
+        updateInputVisibility(false);
+        document.getElementById("waitingArea").classList.add("hidden");
+        addSystemMsg(
+          "AI들이 대화 기록을 심층 분석하여 투표를 진행 중입니다...",
+        );
+
+        const aiAnalysisPromises = gameState.players
+          .filter((p) => p.id !== "user")
+          .map(async (player) => {
+            const othersList = gameState.players
+              .filter((p) => p.id !== player.id)
+              .map((p) => `- 이름: ${p.name}, ID: ${p.id}`)
+              .join("\n");
+            const history = gameState.history.join("\n");
+
+            let systemMsg = "";
+            if (player.isLiar) {
+              systemMsg = `당신은 라이어 ${player.name}입니다. 정체가 들통나지 않아야 합니다. 가장 의심을 많이 받을 것 같은 시민이나, 당신을 공격한 시민을 지목하여 투표하세요. 본인 ID(${player.id})는 절대 지목하면 안 됩니다.`;
+            } else {
+              systemMsg = `당신은 수사관 수준의 시민입니다. 정답은 '${gameState.word}'입니다. 
+                        [분석 가이드]
+                        1. 침묵이나 '...' 처럼 아무 말도 하지 않은 자는 99% 라이어입니다.
+                        2. 제시어 '${gameState.word}'의 핵심 특징에서 벗어나거나 지나치게 포괄적인(예: '그건 맛있어요', '그건 움직여요') 발언을 한 자를 의심하세요.
+                        3. 시민들의 구체적인 맥락에 끼어들지 못하는 자를 찾으세요.
+                        논리적으로 가장 의심되는 플레이어를 한 명 선택하세요.`;
+            }
+
+            const prompt = `참여자 명단:\n${othersList}\n\n대화 기록:\n${history}\n\n위 기록을 분석하여 라이어로 의심되는 플레이어의 ID와 '매우 구체적인' 이유를 JSON으로 제출하세요. 형식: {"targetId": "아이디", "reason": "이유"}`;
+            return {
+              voterId: player.id,
+              result: await geminiCall(prompt, systemMsg, true),
+            };
+          });
+
+        const aiVoteResults = await Promise.all(aiAnalysisPromises);
+        const votes = {};
+        const reasons = {};
+        aiVoteResults.forEach((res) => {
+          votes[res.voterId] = res.result.targetId;
+          reasons[res.voterId] = res.result.reason;
+        });
+
+        setTimeout(() => {
+          addSystemMsg("투표창이 활성화되었습니다. 라이어를 지목하세요.");
+          showVoteUI(votes, reasons);
+        }, 1000);
+      }
+
+      function showVoteUI(aiVotes, aiReasons) {
+        const voteButtons = gameState.players
+          .filter((p) => p.id !== "user")
+          .map(
+            (p) => `
+                    <button onclick="processFinalResult('${p.id}', ${JSON.stringify(aiVotes).replace(/"/g, "&quot;")}, ${JSON.stringify(aiReasons).replace(/"/g, "&quot;")})" class="w-full py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition mb-2 text-sm">
+                        ${p.name}
+                    </button>
+                `,
+          )
+          .join("");
+
+        document.getElementById("inputArea").classList.remove("hidden");
+        document.getElementById("inputArea").innerHTML = `
+                <div class="max-w-4xl mx-auto flex flex-col items-center w-full">
+                    <p class="text-xs font-bold text-gray-400 mb-2">당신이 생각하는 라이어는?</p>
+                    <div class="grid grid-cols-2 gap-2 w-full">${voteButtons}</div>
+                </div>
+            `;
+      }
+
+      function processFinalResult(userVoteId, aiVotes, aiReasons) {
+        const allVotes = { ...aiVotes, user: userVoteId };
+        const voteCounts = {};
+        Object.values(allVotes).forEach((id) => {
+          if (id && id !== "unknown")
+            voteCounts[id] = (voteCounts[id] || 0) + 1;
+        });
+
+        let maxVotes = 0;
+        let electedId = "";
+        for (let id in voteCounts) {
+          if (voteCounts[id] > maxVotes) {
+            maxVotes = voteCounts[id];
+            electedId = id;
+          }
+        }
+
+        const isLiarCaught = electedId === gameState.liarId;
+        const liarPlayer = gameState.players.find(
+          (p) => p.id === gameState.liarId,
+        );
+        const isUserLiar = gameState.liarId === "user";
+
+        let resultHtml = `
+                <div class="mb-4 p-4 bg-gray-50 rounded-2xl text-left text-[11px] leading-tight space-y-3 max-h-60 overflow-y-auto">
+                    <p class="font-bold border-b pb-1 mb-1">AI 수사관들의 분석 리포트</p>
+                    ${gameState.players
+                      .filter((p) => p.id !== "user")
+                      .map((p) => {
+                        const targetId = allVotes[p.id];
+                        const target = gameState.players.find(
+                          (t) => t.id === targetId,
+                        ) || { name: "무효" };
+                        const reason =
+                          aiReasons[p.id] || "분석 근거를 도출하지 못했습니다.";
+                        return `
+                                <div class="border-l-2 border-blue-200 pl-2">
+                                    <span class="font-bold text-gray-700">${p.name}</span> <span class="text-gray-400">의 선택 →</span> <span class="text-blue-600 font-bold">${target.name}</span>
+                                    <p class="text-gray-500 mt-1 italic">"${reason}"</p>
+                                </div>
+                            `;
+                      })
+                      .join("")}
+                </div>
+            `;
+
+        if (isLiarCaught) {
+          const colorClass = isUserLiar ? "text-red-500" : "text-blue-600";
+          resultHtml += `<h2 class="text-3xl mb-2 font-black ${colorClass}">${isUserLiar ? "💀 생존 실패" : "🎉 검거 성공"}</h2>`;
+          resultHtml += `<p class="mb-4 text-gray-700">라이어 <b>[${liarPlayer.name}]</b>가 최다 득표(${voteCounts[electedId]}표)로 지목되었습니다.</p>`;
+        } else {
+          const colorClass = isUserLiar ? "text-blue-600" : "text-red-500";
+          resultHtml += `<h2 class="text-3xl mb-2 font-black ${colorClass}">${isUserLiar ? "😈 완벽한 승리" : "💀 수사 실패"}</h2>`;
+          resultHtml += `<p class="mb-4 text-gray-700">엉뚱한 시민이 지목되었습니다. 진짜 라이어는 <b>[${liarPlayer.name}]</b>였습니다.</p>`;
+        }
+
+        resultHtml += `
+                <div class="bg-indigo-50 p-4 rounded-2xl mb-6 text-center border border-indigo-100">
+                    <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">실제 제시어</p>
+                    <p class="text-2xl font-black text-indigo-700">${gameState.word}</p>
+                </div>
+                <button onclick="location.reload()" class="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-black transition shadow-lg">다시 도전하기</button>
+            `;
+
+        document.getElementById("topKeywordDisplay").classList.add("hidden");
+        document.getElementById("resultContent").innerHTML = resultHtml;
+        document.getElementById("resultModal").classList.remove("hidden");
+      }
+
+      document.getElementById("resetBtn").onclick = () => location.reload();
+      document.getElementById("userInput").onkeypress = (e) => {
+        if (e.key === "Enter") document.getElementById("sendBtn").click();
+      };
+    </script>
+  </body>
+</html>
